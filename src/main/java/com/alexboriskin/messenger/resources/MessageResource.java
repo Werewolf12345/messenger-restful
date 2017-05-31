@@ -45,16 +45,49 @@ public class MessageResource {
 
     @GET
     @Path("/{messageId}")
-    public Message getOne(@PathParam("messageId") long id) {
-        return messageService.getMessage(id);
+    public Message getOne(@PathParam("messageId") long id, @Context UriInfo uriInfo) {
+        Message message = messageService.getMessage(id);
+        message.addLink(getUriForSelf(uriInfo, message), "self");
+        message.addLink(getUriForProfile(uriInfo, message), "profile");
+        message.addLink(getUriForComments(uriInfo, message), "comments");
+        return message;
+    }
+
+    private String getUriForComments(UriInfo uriInfo, Message message) {
+        String uri = uriInfo.getBaseUriBuilder()
+                .path(MessageResource.class)
+                .path(MessageResource.class, "callCommentResource")
+                .resolveTemplate("messageId", message.getId())
+                .build()
+                .toString();
+        return uri;
+    }
+
+    private String getUriForProfile(UriInfo uriInfo, Message message) {
+        String uri = uriInfo.getBaseUriBuilder()
+                .path(ProfileResource.class)
+                .path(message.getAuthor())
+                .build()
+                .toString();
+        return uri;
+    }
+
+    private String getUriForSelf(UriInfo uriInfo, Message message) {
+        String uri = uriInfo.getBaseUriBuilder()
+                .path(MessageResource.class)
+                .path(Long.toString(message.getId()))
+                .build()
+                .toString();
+        return uri;
     }
 
     @POST
-    public Response addNew(Message message, @Context UriInfo uriInfo) throws URISyntaxException {
+    public Response addNew(Message message, @Context UriInfo uriInfo)
+            throws URISyntaxException {
         Message newMessage = messageService.addMessage(message);
-        return Response.created(new URI(uriInfo.getPath() + "/" + newMessage.getId()))
-                       .entity(newMessage)
-                       .build();
+        return Response
+                .created(new URI(uriInfo.getPath() + "/" + newMessage.getId()))
+                .entity(newMessage).build();
     }
 
     @PUT
